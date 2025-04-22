@@ -16,6 +16,12 @@
 Convert any of your images to Catppuccin colors!
 </p>
 
+## Use It Online
+```bash
+curl -sS https://raw.githubusercontent.com/silvaire-qwq/catpic/refs/heads/main/catpic | bash 
+# ... | bash <input_image_path> [output_image_path_or_directory] [palette]
+```
+
 ## Usage
 
 ### Basic Command
