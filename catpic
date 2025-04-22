@@ -1,0 +1,143 @@
+#!/bin/bash
+
+# Check if ImageMagick is installed
+if ! command -v convert &> /dev/null; then
+    echo -e "\e[31;1mError:\e[0m ImageMagick is not installed. Please install it using:"
+    echo -e "\e[34;1m  sudo apt install imagemagick\e[0m"
+    exit 1
+fi
+
+# Check input arguments
+if [ "$#" -lt 1 ]; then
+    echo -e "\e[33;1mUsage:\e[0m $0 <input_image_path> [output_image_path_or_directory] [options]"
+    echo -e "\e[33;1mOptions:\e[0m"
+    echo -e "  -l    Use Latte palette"
+    echo -e "  -f    Use Frappe palette"
+    echo -e "  -a    Use Macchiato palette"
+    echo -e "  -m    Use Mocha palette (default)"
+    echo -e "\e[33;1mExamples:\e[0m"
+    echo -e "  $0 input.png                 \e[90m# Convert using Mocha palette (default)\e[0m"
+    echo -e "  $0 input.png -l              \e[90m# Convert using Latte palette\e[0m"
+    echo -e "  $0 input.png -lfa            \e[90m# Convert using Latte, Frappe, and Macchiato palettes combined\e[0m"
+    echo -e "  $0 input.png output.png -la  \e[90m# Convert using Latte and Macchiato palettes\e[0m"
+    exit 1
+fi
+
+# Parse input arguments
+INPUT_IMAGE=""
+OUTPUT_IMAGE=""
+PALETTE_SELECTION=()
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        -l) PALETTE_SELECTION+=("latte");;
+        -f) PALETTE_SELECTION+=("frappe");;
+        -a) PALETTE_SELECTION+=("macchiato");;
+        -m) PALETTE_SELECTION+=("mocha");;
+        -*)
+            # Handle combined flags like -lfa
+            FLAGS="${1:1}"
+            for (( i=0; i<${#FLAGS}; i++ )); do
+                case "${FLAGS:$i:1}" in
+                    l) PALETTE_SELECTION+=("latte");;
+                    f) PALETTE_SELECTION+=("frappe");;
+                    a) PALETTE_SELECTION+=("macchiato");;
+                    m) PALETTE_SELECTION+=("mocha");;
+                    *) echo -e "\e[31;1mError:\e[0m Invalid flag: -${FLAGS:$i:1}"; exit 1;;
+                esac
+            done
+            ;;
+        *)
+            if [ -z "$INPUT_IMAGE" ]; then
+                INPUT_IMAGE="$1"
+            elif [ -z "$OUTPUT_IMAGE" ]; then
+                OUTPUT_IMAGE="$1"
+            else
+                echo -e "\e[31;1mError:\e[0m Unexpected argument: $1"
+                exit 1
+            fi
+            ;;
+    esac
+    shift
+done
+
+# Default to Mocha if no palette is selected
+if [ "${#PALETTE_SELECTION[@]}" -eq 0 ]; then
+    PALETTE_SELECTION=("mocha")
+fi
+
+# Construct output path if not provided
+if [ -z "$OUTPUT_IMAGE" ]; then
+    FILENAME=$(basename -- "$INPUT_IMAGE")
+    EXTENSION="${FILENAME##*.}"
+    BASENAME="${FILENAME%.*}"
+    # 拼接调色盘名称到文件名
+    PALETTE_SUFFIX=$(IFS=-; echo "${PALETTE_SELECTION[*]}")
+    OUTPUT_IMAGE="./${BASENAME}.catppuccin-${PALETTE_SUFFIX}.${EXTENSION}"
+elif [ -d "$OUTPUT_IMAGE" ]; then
+    # If OUTPUT_IMAGE is a directory, append the filename
+    FILENAME=$(basename -- "$INPUT_IMAGE")
+    EXTENSION="${FILENAME##*.}"
+    BASENAME="${FILENAME%.*}"
+    # 拼接调色盘名称到文件名
+    PALETTE_SUFFIX=$(IFS=-; echo "${PALETTE_SELECTION[*]}")
+    OUTPUT_IMAGE="${OUTPUT_IMAGE%/}/${BASENAME}.catppuccin-${PALETTE_SUFFIX}.${EXTENSION}"
+fi
+
+# Display input and output paths
+echo -e "\e[34;1m==>\e[0;1m Input Image:\e[0m $INPUT_IMAGE"
+echo -e "\e[34;1m==>\e[0;1m Output Image:\e[0m $OUTPUT_IMAGE"
+echo -e "\e[34;1m==>\e[0;1m Selected Palettes:\e[0m ${PALETTE_SELECTION[*]}"
+
+# Define palettes
+declare -A PALETTES
+PALETTES["mocha"]="#f5e0dc #f2cdcd #f5c2e7 #cba6f7 #eba0ac #f38ba8 #fab387 #f9e2af #a6e3a1 #94e2d5 #89dceb #74c7ec #89b4fa #b4befe #cdd6f4 #bac2de #a6adc8 #9399b2 #7f849c #6c7086 #585b70 #45475a #313244 #1e1e2e #181825 #11111b"
+PALETTES["frappe"]="#f2d5cf #eebebe #f4b8e4 #ca9ee6 #e78284 #ea999c #ef9f76 #e5c890 #a6d189 #81c8be #99d1db #85c1dc #8caaee #babbf1 #c6d0f5 #b5bfe2 #a5adce #949cbb #838ba7 #737994 #626880 #51576d #414559 #303446 #292c3c #232634"
+PALETTES["macchiato"]="#f4dbd6 #f0c6c6 #f5bde6 #c6a0f6 #ed8796 #ee99a0 #f5a97f #eed49f #a6da95 #8bd5ca #91d7e3 #7dc4e4 #8aadf4 #b7bdf8 #cad3f5 #b8c0e0 #a5adcb #939ab7 #8087a2 #6e738d #5b6078 #494d64 #363a4f #24273a #1e2030 #181926"
+PALETTES["latte"]="#dc8a78 #dd7878 #ea76cb #8839ef #d20f39 #e64553 #fe640b #df8e1d #40a02b #179299 #04a5e5 #209fb5 #1e66f5 #7287fd #4c4f69 #5c5f77 #6c6f85 #7c7f93 #8c8fa1 #9ca0b0 #acb0c0 #bcc0cf #ccd0df #dde0ef #eff1f5"
+
+# Combine selected palettes
+PALETTE_COLORS=()
+for theme in "${PALETTE_SELECTION[@]}"; do
+    IFS=' ' read -r -a COLORS <<< "${PALETTES[$theme]}"
+    PALETTE_COLORS+=("${COLORS[@]}")
+done
+
+# Create the palette image
+PALETTE_FILE="catppuccin_palette.png"
+echo -e "\e[34;1m==>\e[0;1m Creating palette image\e[0m"
+convert -size ${#PALETTE_COLORS[@]}x1 xc:none \
+    $(for color in "${PALETTE_COLORS[@]}"; do echo "xc:$color"; done) \
+    +append "$PALETTE_FILE" &>/dev/null
+
+# Convert the image to Catppuccin tones
+echo -e "\e[34;1m==>\e[0;1m Converting image\e[0m"
+
+# Start the spinner in the background
+(
+    SPINNER=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)  # 旋转的盲文字符
+    SPINNER_LENGTH=${#SPINNER[@]}
+    i=0
+    while true; do
+        # 打印旋转字符
+        printf "\r%s" "${SPINNER[i]}"
+        i=$(( (i + 1) % SPINNER_LENGTH ))  # 循环更新字符
+        sleep 0.1  # 控制旋转速度
+    done
+) &
+SPINNER_PID=$!  # 获取旋转动画进程的 PID
+
+# Run the convert command
+convert "$INPUT_IMAGE" -dither FloydSteinberg -remap "$PALETTE_FILE" "$OUTPUT_IMAGE" &>/dev/null
+
+# 停止旋转动画并隐藏
+kill $SPINNER_PID 2>/dev/null
+wait $SPINNER_PID 2>/dev/null || true
+printf "\r\033[K"  # 清除当前行
+
+# Remove the temporary palette file
+echo -e "\e[34;1m==>\e[0;1m Cleaning up temporary files\e[0m"
+rm "$PALETTE_FILE"
+
+# Success message
+echo -e "\e[32;1m==>\e[0;1m Conversion complete!\e[0m"
+echo -e "\e[32;1m==>\e[0;1m Saved to:\e[0m $OUTPUT_IMAGE"
