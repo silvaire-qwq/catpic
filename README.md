@@ -16,12 +16,6 @@
 Convert any of your images to Catppuccin colors!
 </p>
 
-## Use It Online
-```bash
-curl -sS https://raw.githubusercontent.com/silvaire-qwq/catpic/refs/heads/main/catpic | bash 
-# ... | bash <input_image_path> [output_image_path_or_directory] [palette]
-```
-
 ## Usage
 
 ### Basic Command
@@ -78,7 +72,6 @@ Ensure that [ImageMagick](https://imagemagick.org/) is installed on your system:
 sudo apt install imagemagick
 ```
 
-## License
+## Logo
 The Catppuccin Logo for the README.md of this GitHub repository is from [daveedmee/catppuccin-icons](https://github.com/daveedmee/catppuccin-icons). 
-
 If you think I've violated the rights of the original author, please raise an issue and I'll remove it as soon as possible.
